@@ -97,6 +97,9 @@ public class HTTPServerConfig {
   protected float maxErrorsPerWordRate = 0;
   protected boolean suggestionsEnabled = true;
   protected int maxSpellingSuggestions = 0;
+  // 0 or negative = unlimited (default). When > 0, /v2/check trims its
+  // response to at most this many rule matches (plus hidden matches).
+  protected int maxMatches = 0;
   protected List<String> blockedReferrers = new ArrayList<>();
   protected Pattern trustedSources = null;
   protected boolean premiumAlways;
@@ -197,6 +200,7 @@ public class HTTPServerConfig {
     "dbDriver", "dbPassword", "dbUrl", "dbUsername", "disabledRuleIds", "fasttextBinary", "fasttextModel", "grammalectePassword",
     "grammalecteServer", "grammalecteUser", "ipFingerprintFactor", "languageModel", "maxCheckThreads", "maxTextCheckerThreads", "textCheckerQueueSize", "maxCheckTimeMillis",
     "maxCheckTimeWithApiKeyMillis", "maxErrorsPerWordRate", "maxPipelinePoolSize", "suggestionsEnabled", "maxSpellingSuggestions", "maxTextHardLength",
+    "maxMatches",
     "maxTextLength", "maxTextLengthWithApiKey", "maxWorkQueueSize", "pipelineCaching",
     "pipelineExpireTimeInSeconds", "pipelinePrewarming", "prometheusMonitoring", "prometheusPort", "remoteRulesFile",
     "requestLimit", "requestLimitInBytes", "requestLimitPeriodInSeconds", "requestLimitWhitelistUsers", "requestLimitWhitelistLimit",
@@ -288,6 +292,22 @@ public class HTTPServerConfig {
           break;
         case "--notLogIP":
           logIp = false;
+          break;
+        case "--maxMatches":
+          try {
+            String value = args[++i];
+            if (value.startsWith("--")) {
+              throw new IllegalArgumentException("Missing argument for '--maxMatches' (expected a non-negative integer)");
+            }
+            maxMatches = Integer.parseInt(value);
+            if (maxMatches < 0) {
+              throw new IllegalArgumentException("'--maxMatches' must be >= 0 (0 disables the cap), got: " + maxMatches);
+            }
+          } catch (ArrayIndexOutOfBoundsException e) {
+            throw new IllegalArgumentException("Missing argument for '--maxMatches' (expected a non-negative integer)");
+          } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid argument for '--maxMatches', expected a non-negative integer: " + e.getMessage());
+          }
           break;
         case "--logIpMatchingPattern":
           try {
@@ -402,6 +422,10 @@ public class HTTPServerConfig {
         maxErrorsPerWordRate = Float.parseFloat(getOptionalProperty(props, "maxErrorsPerWordRate", "0"));
         suggestionsEnabled = Boolean.parseBoolean(getOptionalProperty(props, "suggestionsEnabled", "true"));
         maxSpellingSuggestions = Integer.parseInt(getOptionalProperty(props, "maxSpellingSuggestions", "0"));
+        maxMatches = Integer.parseInt(getOptionalProperty(props, "maxMatches", "0"));
+        if (maxMatches < 0) {
+          throw new IllegalArgumentException("'maxMatches' must be >= 0 (0 disables the cap), got: " + maxMatches);
+        }
         blockedReferrers = Arrays.asList(getOptionalProperty(props, "blockedReferrers", "").split(",\\s*"));
         setTrustedSources(getOptionalProperty(props, "trustedSources", null));
         String premiumAlwaysValue = props.getProperty("premiumAlways");
@@ -1019,6 +1043,23 @@ public class HTTPServerConfig {
    */
   int getMaxSpellingSuggestions() {
     return maxSpellingSuggestions;
+  }
+
+  /**
+   * Maximum number of rule matches to return from /v2/check responses.
+   * Controlled by the {@code --maxMatches} CLI flag (or the {@code maxMatches}
+   * config-file key). 0 (the default) disables the cap.
+   * @since 6.7
+   */
+  public int getMaxMatches() {
+    return maxMatches;
+  }
+
+  public void setMaxMatches(int maxMatches) {
+    if (maxMatches < 0) {
+      throw new IllegalArgumentException("maxMatches must be >= 0, got: " + maxMatches);
+    }
+    this.maxMatches = maxMatches;
   }
 
   /**

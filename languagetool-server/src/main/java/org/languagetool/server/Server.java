@@ -126,6 +126,8 @@ abstract class Server {
     System.out.println("                 'maxErrorsPerWordRate' - checking will stop with error if there are more rules matches per word (optional)");
     System.out.println("                 'maxSpellingSuggestions' - only this many spelling errors will have suggestions for performance reasons (optional,\n" +
                        "                                            affects Hunspell-based languages only)");
+    System.out.println("                 'maxMatches' - cap the number of matches returned by /v2/check at this value per request (optional,\n" +
+                       "                                also caps the hidden-matches list); 0 (default) disables the cap");
     System.out.println("                 'maxCheckThreads' - maximum number of threads working in parallel (optional)");
     System.out.println("                 'cacheSize' - size of internal cache in number of sentences (optional, default: 0)");
     System.out.println("                 'cacheTTLSeconds' - how many seconds sentences are kept in cache (optional, default: 300 if 'cacheSize' is set)");
@@ -173,6 +175,8 @@ abstract class Server {
     System.out.println("                         which contain a Lucene index (optional, overwrites 'languageModel'");
     System.out.println("                         parameter in properties files)");
     System.out.println("  --premiumAlways  activate the premium rules even when user has no username/password - useful for API servers");
+    System.out.println("  --maxMatches N   cap the number of matches returned by /v2/check at N per request");
+    System.out.println("                   (also caps the hidden-matches list); 0 (default) disables the cap.");
   }
 
   protected static void checkForNonRootUser() {

@@ -735,6 +735,26 @@ abstract class TextChecker {
     }
 
     int compactMode = Integer.parseInt(params.getOrDefault("c", "0"));
+    int maxMatches = config.getMaxMatches();
+    if (maxMatches > 0) {
+      int remaining = maxMatches;
+      for (CheckResults result : res) {
+        List<RuleMatch> ruleMatches = result.getRuleMatches();
+        if (remaining <= 0) {
+          if (!ruleMatches.isEmpty()) {
+            result.setRuleMatches(new ArrayList<>());
+          }
+        } else if (ruleMatches.size() > remaining) {
+          result.setRuleMatches(new ArrayList<>(ruleMatches.subList(0, remaining)));
+          remaining = 0;
+        } else {
+          remaining -= ruleMatches.size();
+        }
+      }
+      if (hiddenMatches.size() > maxMatches) {
+        hiddenMatches = new ArrayList<>(hiddenMatches.subList(0, maxMatches));
+      }
+    }
     String response = getResponse(aText, lang, detLang, motherTongue, res, hiddenMatches, incompleteResultReason, compactMode,
       limits.getPremiumUid() == null, qParams.mode);
     if (qParams.callback != null) {
